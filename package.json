@@ -1,0 +1,14 @@
+{
+  "name": "generate",
+  "version": "0.0.0",
+  "description": "Generate files from templates",
+  "main": "generate.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^0.5.1"
+  }
+}
