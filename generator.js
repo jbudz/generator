@@ -1,14 +1,13 @@
 'use strict';
-var exec = require('child_process').exec;
+var childProcess = require('child_process');
 var path = require('path');
 var fs = require('fs');
 var readline = require('readline');
 var chalk = require('chalk');
-
 var GENERATOR_JSON = 'generator.json';
 
 function getRootDir(cb) {
-	exec('git rev-parse --show-toplevel', function(error, stdout, stderr) {
+	childProcess.exec('git rev-parse --show-toplevel', function(error, stdout, stderr) {
 		if (error) {
 			cb(process.cwd())
 		} else {
@@ -17,19 +16,22 @@ function getRootDir(cb) {
 	});
 }
 
-function generateFiles(paths, requests, name) {
-	var options = Object.keys(paths);
+function generateFiles(options, sucess, error) {
+	var paths = options.paths,
+		requests = options.requests,
+		name = options.name;
+		templates = options.Object.keys(paths);
 
 	requests.forEach(function(request) {
 		var index = options.indexOf(request);
 		if (index >= 0 &&
-			typeof paths[options[index]].src === "string" && 
-			typeof paths[options[index]].dest === "string") {
+			typeof paths[templates[index]].src === "string" && 
+			typeof paths[templates[index]].dest === "string") {
 			getRootDir(function(dir) {
-				var src = dir + '/' + paths[options[index]].src;
+				var src = dir + '/' + paths[templates[index]].src;
 				var srcFile = src.split('/').slice('-1')[0];
 				var extension = srcFile.split('.').slice('-1')[0];
-				var dest = dir + '/' + paths[options[index]].dest;
+				var dest = dir + '/' + paths[templates[index]].dest;
 				var outputFile = dest + '/' + name + '.' + extension
 
 				if (fs.existsSync(outputFile)) {
@@ -60,7 +62,7 @@ function generateFiles(paths, requests, name) {
 					console.log(chalk.green('Success ') + rl.output.path);
 				});
 			});
-
+			success();
 		} else {
 			console.log(chalk.red('Error ') + request + ' not found')
 		}
@@ -72,16 +74,23 @@ module.exports = {
 		getRootDir(function(dir) {
 			var file = dir + '/' + GENERATOR_JSON;
 			fs.exists(file, function(exists) {
-				if (!exists) {
+				if (exists) {
+					error(new Error('File exists'));
+				} else {
 					fs.writeFile(file, '{\n\n}', function(err) {
-						console.log(chalk.red('Error ') + 'Not able to make file ' + file);
+						if(err) {
+							console.log(chalk.red('Error ') + 'Not able to make file ' + file);
+							error(err);
+						} else {
+							success(file);
+						}
 					})
 				}
 			})
 		});
 	},
 
-	make: function(profiles, name) {
+	make: function(profiles, name, success) {
 		if (!(profiles && profiles.length && name)) {
 			return;
 		}
@@ -95,7 +104,9 @@ module.exports = {
 			fs.readFile(dir + '/' + GENERATOR_JSON, {
 				encoding: 'utf-8'
 			}, function(err, data) {
-				generateFiles(JSON.parse(data), profiles, name);
+				generateFiles({paths: JSON.parse(data), requests: profiles, name: name}, function() {
+					success(arguments)
+				});
 			})
 
 		});
